@@ -16,14 +16,14 @@ async function registerUser(req, res) {
   }
 }
 
-async function logInUser(res, req) {
-  const { username, fullname, email, password } = req.body;
+async function logInUser(req, res) {
+  const { email, password } = req.body;
   try {
-    const user = await registerUser(username, fullname, email, password);
+    const user = await registerUserServices.loginUser(email, password);
     res.status(201).json(user);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Registration failed" });
+    res.status(500).json({ message: "Login failed" });
   }
 }
 
