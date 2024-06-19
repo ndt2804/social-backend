@@ -1,14 +1,13 @@
-const route = require("../api/route");
-const bodyParser = require("body-parser");
+import route from "../api/route.js";
+import bodyParser from "body-parser";
 
-const express = require("express");
+import express from "express";
 const app = express();
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express({ extended: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-
-require("dotenv").config();
+import "dotenv/config";
 const port = process.env.PORT;
 
 app.listen(port, () => {
