@@ -1,8 +1,8 @@
-const bcrypt = require("bcrypt");
-const supabase = require("../libs/supabase");
-async function registerUser(username, fullname, email, password) {
+import { hash, compareSync } from "bcrypt";
+import supabase from "../libs/supabase.js";
+export async function registerUserService(username, fullname, email, password) {
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await hash(password, 10);
 
     const { data: existingUser } = await supabase
       .from("users")
@@ -11,7 +11,7 @@ async function registerUser(username, fullname, email, password) {
       .single();
 
     if (!existingUser) {
-      const { user, error } = await supabase.auth.signUp({
+      const { user, error } = await auth.signUp({
         email,
         password: hashedPassword,
       });
@@ -41,7 +41,7 @@ async function registerUser(username, fullname, email, password) {
     return { message: "Error registering user", error };
   }
 }
-async function loginUser(email, password) {
+export async function loginUserService(email, password) {
   try {
     const { data: existingUser, error } = await supabase
       .from("users")
@@ -52,7 +52,7 @@ async function loginUser(email, password) {
     if (!existingUser) {
       throw new Error("Email of user is not correct");
     }
-    const isMatch = bcrypt.compareSync(password, existingUser.password);
+    const isMatch = compareSync(password, existingUser.password);
     if (!isMatch) {
       throw new Error("Password of user is not correct");
     }
@@ -71,5 +71,3 @@ async function loginUser(email, password) {
   }
 }
 async function getUser() {}
-
-module.exports = { registerUser, loginUser };

@@ -1,14 +1,12 @@
-const registerUserServices = require("../services/auth.service");
+import {
+  registerUserService,
+  loginUserService,
+} from "../services/auth.service.js";
 
-async function registerUser(req, res) {
+export async function registerUser(req, res) {
   const { username, fullname, email, password } = req.body;
   try {
-    const user = await registerUserServices.registerUser(
-      username,
-      fullname,
-      email,
-      password
-    );
+    const user = await registerUserService(username, fullname, email, password);
     res.status(201).json(user);
   } catch (error) {
     console.error(error);
@@ -16,18 +14,13 @@ async function registerUser(req, res) {
   }
 }
 
-async function logInUser(req, res) {
+export async function logInUser(req, res) {
   const { email, password } = req.body;
   try {
-    const user = await registerUserServices.loginUser(email, password);
+    const user = await loginUserService(email, password);
     res.status(201).json(user);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Login failed" });
   }
 }
-
-module.exports = {
-  registerUser,
-  logInUser,
-};
