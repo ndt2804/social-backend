@@ -24,3 +24,20 @@ export async function logInUser(req, res) {
     res.status(500).json({ message: "Login failed" });
   }
 }
+
+export async function refreshToken(req, res) {
+  const { refreshToken } = req.cookies.refreshToken;
+
+  try {
+    if (!refreshToken) {
+      return res.sendStatus(401);
+    }
+    if (!refreshToken.includes(refreshToken)) {
+      return res.sendStatus(403);
+    }
+    res.status(201).json(refreshToken);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Login failed" });
+  }
+}
