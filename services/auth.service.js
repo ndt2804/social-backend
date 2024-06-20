@@ -61,9 +61,25 @@ export async function loginUserService(email, password) {
       console.error("Error logging in:", error.message);
       throw new Error("Failed to log in user");
     }
+
+    const accessToken = jwt.sign(
+      { id: user._id },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: "15m" }
+    );
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.REFRESH_TOKEN_SECRET
+    );
+    refreshTokens.push(refreshToken);
+    delete user.password;
+    res.cookie("accessToken", accessToken, { httpOnly: true, secure: true });
+    res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: true });
     return {
       message: "User logged in successfully",
       existingUser,
+      accessToken,
+      refreshToken,
     };
   } catch (error) {
     console.error("Error logging in:", error.message);
