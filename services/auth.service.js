@@ -1,17 +1,18 @@
 import { hash, compareSync } from "bcrypt";
 import supabase from "../libs/supabase.js";
+import jwt from "jsonwebtoken";
+import "dotenv/config";
+
 export async function registerUserService(username, fullname, email, password) {
   try {
     const hashedPassword = await hash(password, 10);
-
     const { data: existingUser } = await supabase
       .from("users")
       .select("*")
       .eq("email", email)
       .single();
-
     if (!existingUser) {
-      const { user, error } = await auth.signUp({
+      const { user, error } = await supabase.auth.signUp({
         email,
         password: hashedPassword,
       });
@@ -20,7 +21,6 @@ export async function registerUserService(username, fullname, email, password) {
         console.error("Error signing up:", error.message);
         throw new Error("Failed to register user");
       }
-
       const { data: insertedUsers, error: insertError } = await supabase
         .from("users")
         .insert([{ username, fullname, email, password: hashedPassword }])
@@ -41,6 +41,7 @@ export async function registerUserService(username, fullname, email, password) {
     return { message: "Error registering user", error };
   }
 }
+
 export async function loginUserService(email, password) {
   try {
     const { data: existingUser, error } = await supabase
@@ -63,18 +64,14 @@ export async function loginUserService(email, password) {
     }
 
     const accessToken = jwt.sign(
-      { id: user._id },
-      process.env.ACCESS_TOKEN_SECRET,
+      { id: existingUser.id },
+      process.env.SECRET_KEY,
       { expiresIn: "15m" }
     );
     const refreshToken = jwt.sign(
-      { id: user._id },
-      process.env.REFRESH_TOKEN_SECRET
+      { id: existingUser._id },
+      process.env.SECRET_KEY
     );
-    refreshTokens.push(refreshToken);
-    delete user.password;
-    res.cookie("accessToken", accessToken, { httpOnly: true, secure: true });
-    res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: true });
     return {
       message: "User logged in successfully",
       existingUser,
@@ -86,4 +83,60 @@ export async function loginUserService(email, password) {
     return { message: "Error logging in", error };
   }
 }
-async function getUser() {}
+export async function userService(user) {
+  try {
+    const tokenMatch = user.match(/accessToken=([^;]*)/);
+    const token = tokenMatch ? tokenMatch[1] : null;
+    if (!token) {
+      throw new Error();
+    }
+    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    const { data: existingUser, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", decoded.id)
+      .single();
+
+    if (error) {
+      console.error("Error user in:", error.message);
+      throw new Error("Failed user");
+    }
+    if (!existingUser) {
+      throw new Error('Not User');
+    }
+
+    return existingUser;
+
+  }
+  catch (e) {
+    throw new Error('Error when try get User');
+  }
+}
+export async function getUserService(slug) {
+
+  try {
+    if (!slug) {
+      throw new Error();
+    }
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("username", slug)
+      .single();
+    if (error) {
+      console.error("Error getUser in:", error.message);
+      throw new Error("Failed getUser");
+    }
+    if (!user) {
+      throw new Error('Not User');
+    }
+
+    return user;
+  }
+  catch (e) {
+    throw new Error('Error when try get User');
+  }
+}
+export async function changeUserNameService() {
+
+}
