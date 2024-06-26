@@ -2,6 +2,7 @@ import { hash, compareSync } from "bcrypt";
 import supabase from "../libs/supabase.js";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
+import nodemailer from 'nodemailer'
 
 export async function registerUserService(username, fullname, email, password) {
   try {
@@ -137,6 +138,144 @@ export async function getUserService(slug) {
     throw new Error('Error when try get User');
   }
 }
-export async function changeUserNameService() {
+export async function updateUserService(slug, username, fullname, email) {
+  try {
+    if (!slug) {
+      throw new Error();
+    }
+    const { data: user, error } = await supabase
+      .from('users')
+      .update({ username: username, fullname: fullname, email: email })
+      .eq('username', slug)
+      .select()
+    if (error) {
+      console.error("Error change user in:", error.message);
+      throw new Error("Failed update user");
+    }
+    if (!user) {
+      throw new Error('Not User');
+    }
+
+    return user;
+  }
+  catch (e) {
+    throw new Error('Error when update User');
+  }
 
 }
+export async function changePasswordUserService(slug, oldPassword, newPassword) {
+  try {
+    if (!slug) {
+      throw new Error();
+    }
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("username", slug)
+      .single();
+    if (error) {
+      console.error("Error change user in:", error.message);
+      throw new Error("Failed update user");
+    }
+    if (!user) {
+      throw new Error('Not User');
+    }
+    const isMatch = compareSync(oldPassword, user.password);
+    if (isMatch) {
+      const hashNewPassword = await hash(newPassword, 10);
+
+      const { data: updatePasswordUser } = await supabase
+        .from('users')
+        .update({ password: hashNewPassword })
+        .eq('username', slug)
+        .select()
+      return {
+        message: "User change password successfully",
+        updatePasswordUser,
+      };
+    }
+    throw new Error("Old password of user is not correct");
+  }
+  catch (e) {
+    throw new Error('Error when update User');
+  }
+
+}
+export async function checkEmailService(email, token) {
+  const isMatch = compareSync(email, token);
+  if (!isMatch) {
+    throw new Error("Email of user is not correct");
+  }
+  return {
+    success: true,
+    message: "Email và token khớp nhau",
+  };
+
+}
+export async function updatePasswordService(email, password) {
+  const hashNewPassword = await hash(password, 10);
+  const { data: updatePasswordUser } = await supabase
+    .from('users')
+    .update({ password: hashNewPassword })
+    .eq('email', email)
+    .select()
+  return {
+    message: "User change password successfully",
+    updatePasswordUser,
+  };
+}
+export async function resetPasswordService(email) {
+  const hashEmail = await hash(email, 10);
+  const data = await emailServices(email, hashEmail);
+  return data;
+}
+
+export const emailServices = async (email, hashEmail) => {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.MAIL,
+      pass: process.env.PASSWORD_MAIL,
+    },
+  });
+  const resetPasswordHTML = `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Reset</title>
+  </head>
+  <body>
+    <p>Dear User,</p>
+    <p>You have requested a password reset for your account.</p>
+    <p>If you did not make this request, you can safely ignore this email.</p>
+    <p>To proceed with the password reset, please click the button below:</p>
+    <p><a href="http://localhost:2080/updatePassword?email=${email}&token=${hashEmail}" style="display:inline-block;padding:10px 20px;background-color:#007bff;color:#ffffff;text-decoration:none;border-radius:5px;">Reset Password</a></p>
+    <p>If the button above does not work, you can also copy and paste the following link into your browser's address bar:</p>
+    <p>http://localhost:2080/updatePassword?email=${email}&token=${hashEmail}</p>
+    <p>Thank you,</p>
+    <p>Your Website Team</p>
+  </body>
+  </html>
+`;
+  transporter.verify((error) => {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log('[SUCCESS] - Nodemailer');
+    }
+  });
+  const info = await transporter.sendMail({
+    from: '"Aoi Fuuka" <networking.ved@gmail.com>',
+    to: email,
+    subject: "Reset Password",
+    text: "Hello world?",
+    html: resetPasswordHTML,
+  });
+  return info
+
+} 
