@@ -13,15 +13,6 @@ export async function registerUserService(username, fullname, email, password) {
       .eq("email", email)
       .single();
     if (!existingUser) {
-      const { user, error } = await supabase.auth.signUp({
-        email,
-        password: hashedPassword,
-      });
-
-      if (error) {
-        console.error("Error signing up:", error.message);
-        throw new Error("Failed to register user");
-      }
       const { data: insertedUsers, error: insertError } = await supabase
         .from("users")
         .insert([{ username, fullname, email, password: hashedPassword }])
@@ -70,7 +61,7 @@ export async function loginUserService(email, password) {
       { expiresIn: "15m" }
     );
     const refreshToken = jwt.sign(
-      { id: existingUser._id },
+      { id: existingUser.id },
       process.env.SECRET_KEY
     );
     return {
@@ -82,6 +73,41 @@ export async function loginUserService(email, password) {
   } catch (error) {
     console.error("Error logging in:", error.message);
     return { message: "Error logging in", error };
+  }
+}
+export async function refreshTokenService(cookie) {
+  try {
+    const refreshTokenMatch = cookie.match(/refreshToken=([^;]*)/);
+    const refreshToken = refreshTokenMatch ? refreshTokenMatch[1] : null;
+    if (!refreshToken) {
+      throw new Error();
+    }
+    const decoded = jwt.verify(refreshToken, process.env.SECRET_KEY);
+    const { data: existingUser, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", decoded.id)
+      .single();
+    if (error) {
+      console.error("Error user in:", error.message);
+      throw new Error("Failed user");
+    }
+    if (!existingUser) {
+      throw new Error('Not User');
+    }
+    const newToken = jwt.sign(
+      { id: existingUser.id },
+      process.env.SECRET_KEY,
+      { expiresIn: "15m" }
+
+    );
+    return {
+      message: "New Token",
+      newToken,
+    };
+  } catch (error) {
+    console.error("Error refresh token in:", error.message);
+    return { message: "Error refresh token in", error };
   }
 }
 export async function userService(user) {

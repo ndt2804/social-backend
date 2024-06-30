@@ -1,6 +1,7 @@
 import {
   registerUserService,
   loginUserService,
+  refreshTokenService,
   userService,
   getUserService,
   updateUserService,
@@ -45,21 +46,16 @@ export async function getProfile(req, res) {
 }
 
 export async function refreshToken(req, res) {
-  const { refreshToken } = req.cookies.refreshToken;
-
   try {
-    if (!refreshToken) {
-      return res.sendStatus(401);
-    }
-    if (!refreshToken.includes(refreshToken)) {
-      return res.sendStatus(403);
-    }
-    res.status(201).json(refreshToken);
+    const newAccessToken = await refreshTokenService(req.headers.cookie);
+    res.cookie('accessToken', newAccessToken.newToken, { httpOnly: true, secure: true });
+    res.status(200).send(newAccessToken);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Login failed" });
+    return res.status(500).send((error));
   }
 }
+
+
 
 export async function updateUser(req, res) {
   const { username, fullname, email } = req.body;
@@ -100,9 +96,8 @@ export async function verifyEmail(req, res) {
   }
 }
 export async function updatePassword(req, res) {
-  const { email, token } = req.query;
+  const { email } = req.query;
   const { password } = req.body;
-
   try {
     const result = await updatePasswordService(email, password);
     res.status(200).send(result);
